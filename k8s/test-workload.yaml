@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-demo-sql
+  namespace: clickhouse-demo
+data:
+  smoke.sql: |
+    CREATE DATABASE IF NOT EXISTS demo;
+
+    DROP TABLE IF EXISTS demo.events;
+
+    CREATE TABLE demo.events
+    (
+        event_time DateTime,
+        event_id UInt64,
+        batch UInt32,
+        payload String
+    )
+    ENGINE = MergeTree
+    PARTITION BY toYYYYMM(event_time)
+    ORDER BY (event_time, event_id)
+    SETTINGS storage_policy = 'hot_policy';
+
+    INSERT INTO demo.events
+    SELECT
+        now() - toIntervalSecond(number % 3600),
+        number,
+        1,
+        repeat('smoke-', 32)
+    FROM numbers(10000);
+
+    SELECT
+        name AS part_name,
+        disk_name,
+        rows,
+        bytes_on_disk,
+        path
+    FROM system.parts
+    WHERE database = 'demo'
+      AND table = 'events'
+      AND active
+    ORDER BY name;
+  object_storage.sql: |
+    CREATE DATABASE IF NOT EXISTS demo;
+
+    DROP TABLE IF EXISTS demo.object_storage_events;
+
+    CREATE TABLE demo.object_storage_events
+    (
+        event_time DateTime,
+        event_id UInt64,
+        payload String
+    )
+    ENGINE = MergeTree
+    PARTITION BY toYYYYMM(event_time)
+    ORDER BY (event_time, event_id)
+    SETTINGS storage_policy = 'oci_object_storage_policy';
+
+    INSERT INTO demo.object_storage_events
+    SELECT
+        now(),
+        number,
+        repeat('object-storage-', 64)
+    FROM numbers(10000);
+
+    SELECT
+        name AS part_name,
+        disk_name,
+        rows,
+        bytes_on_disk,
+        path
+    FROM system.parts
+    WHERE database = 'demo'
+      AND table = 'object_storage_events'
+      AND active
+    ORDER BY name;

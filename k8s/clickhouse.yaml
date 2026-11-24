@@ -1,0 +1,120 @@
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: oke-hot-object-demo
+  namespace: clickhouse-demo
+spec:
+  configuration:
+    clusters:
+      - name: demo
+        layout:
+          shardsCount: 3
+          replicasCount: 1
+        templates:
+          podTemplate: clickhouse-pod
+          serviceTemplate: clickhouse-service
+    users:
+      default/networks/ip:
+        - 0.0.0.0/0
+        - ::/0
+      default/password: ""
+      default/profile: default
+      default/quota: default
+    files:
+      config.d/01-paths.xml: |
+        <clickhouse>
+          <path>/var/lib/clickhouse/hot/server/</path>
+          <tmp_path>/var/lib/clickhouse/hot/tmp/</tmp_path>
+          <user_files_path>/var/lib/clickhouse/hot/user_files/</user_files_path>
+          <format_schema_path>/var/lib/clickhouse/hot/format_schemas/</format_schema_path>
+        </clickhouse>
+      config.d/02-storage.xml: |
+        <clickhouse>
+          <storage_configuration>
+            <disks>
+              <hot>
+                <path>/var/lib/clickhouse/hot/data/</path>
+                <keep_free_space_bytes>1073741824</keep_free_space_bytes>
+              </hot>
+              <oci_object_storage>
+                <type>object_storage</type>
+                <object_storage_type>s3</object_storage_type>
+                <endpoint from_env="OBJECT_STORAGE_ENDPOINT"/>
+                <access_key_id from_env="OBJECT_STORAGE_ACCESS_KEY"/>
+                <secret_access_key from_env="OBJECT_STORAGE_SECRET_KEY"/>
+                <region from_env="OBJECT_STORAGE_REGION"/>
+                <metadata_type>local</metadata_type>
+                <metadata_path>/var/lib/clickhouse/hot/oci-object-storage-metadata/</metadata_path>
+                <skip_access_check>false</skip_access_check>
+              </oci_object_storage>
+            </disks>
+            <policies>
+              <hot_policy>
+                <volumes>
+                  <hot>
+                    <disk>hot</disk>
+                  </hot>
+                </volumes>
+              </hot_policy>
+              <oci_object_storage_policy>
+                <volumes>
+                  <main>
+                    <disk>oci_object_storage</disk>
+                  </main>
+                </volumes>
+              </oci_object_storage_policy>
+            </policies>
+          </storage_configuration>
+        </clickhouse>
+  templates:
+    serviceTemplates:
+      - name: clickhouse-service
+        generateName: clickhouse-demo
+        spec:
+          type: ClusterIP
+          ports:
+            - name: http
+              port: 8123
+            - name: tcp
+              port: 9000
+    podTemplates:
+      - name: clickhouse-pod
+        spec:
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: clickhouse.altinity.com/chi
+                        operator: In
+                        values:
+                          - oke-hot-object-demo
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: clickhouse
+              # Digest observed on the working amd64 deployment, 2026-11-17.
+              image: docker.io/clickhouse/clickhouse-server@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
+              imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "1Gi"
+                limits:
+                  cpu: "2"
+                  memory: "4Gi"
+              envFrom:
+                - secretRef:
+                    name: clickhouse-oci-object-storage
+              volumeMounts:
+                - name: hot-data
+                  mountPath: /var/lib/clickhouse/hot
+    volumeClaimTemplates:
+      - name: hot-data
+        reclaimPolicy: Delete
+        spec:
+          storageClassName: oci-bv-clickhouse-demo
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 50Gi

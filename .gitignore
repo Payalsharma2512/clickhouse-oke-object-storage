@@ -1,0 +1,32 @@
+# Generated manifests and runtime evidence
+/build/
+/evidence/
+/logs/
+*.log
+*.tar.gz
+*.zip
+# OCI sessions, kubeconfigs, and environment-specific inputs
+.oci/
+.kube/
+.kube*
+*kubeconfig*
+*.env
+.env*
+*.env.*
+!oci/object-storage.env.example
+/oci/config
+/oci/*target*
+*credentials*
+*secret*.json
+*secret*.env
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+# Local editor/OS metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

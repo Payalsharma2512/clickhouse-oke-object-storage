@@ -1,0 +1,12 @@
+LICENSE SELECTION PENDING - NOT APPROVED FOR PUBLICATION
+
+No open-source license has yet been authorized for the original scripts and
+documentation in this repository. This file does not grant a license to them.
+The rights holder must approve a license and confirm release authority before
+publication. Replace this file with the approved license text before publishing.
+
+Third-party code retains its own license. k8s/clickhouse-operator.yaml is derived
+from Altinity/clickhouse-operator 0.26.3, licensed under Apache License 2.0.
+The complete upstream text is in
+LICENSES/Altinity-clickhouse-operator-Apache-2.0.txt.
+See THIRD_PARTY_NOTICES.md for attribution and modifications.
