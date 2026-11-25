@@ -6,10 +6,10 @@ MergeTree data on an OCI Object Storage-backed disk. The same SQL engine reads
 both. Kubernetes PVCs identify the block devices; ClickHouse system tables show
 where the active table parts reside.
 
-The architecture has three workers, three ClickHouse pods, three 50 GiB Block
-Volumes, and one shared Object Storage bucket. It uses Altinity ClickHouse Operator
-0.26.3. No Terraform, Keeper deployment, external monitoring, or public database
-load balancer is needed.
+The demo uses three workers, three ClickHouse pods, three 50 GiB Block Volumes,
+and one shared Object Storage bucket. The Kubernetes operator manifest is adapted
+from Altinity's ClickHouse Operator 0.26.3 installation bundle, distributed under
+Apache 2.0. [Altinity's source manifest](https://github.com/Altinity/clickhouse-operator/blob/0.26.3/deploy/operator/clickhouse-operator-install-bundle.yaml) · [Changes made for this demo](THIRD_PARTY_NOTICES.md)
 
 ## Validation results and scope
 
@@ -261,10 +261,8 @@ The source CHI pins ClickHouse to the image digest observed on the working deplo
 image: docker.io/clickhouse/clickhouse-server@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
 ```
 
-The operator bundle is already vendored and rendered, with operator and exporter
-version `0.26.3`. It contains the standard upstream CRDs, RBAC, configuration and
-Deployment; Keeper-related CRD definitions do not create Keeper pods.
-
+In install mode, the script applies the bundled Altinity manifest. In reuse mode,
+it checks the operator already running in your cluster.
 
 Only after authorizing the new resources, run:
 

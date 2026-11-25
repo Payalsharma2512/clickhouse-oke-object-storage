@@ -15,7 +15,8 @@ demo bundle substitutes the namespace and associated RBAC names, omits the
 alternative namespaced Role/RoleBinding while retaining ClusterRole/Binding,
 uses `IfNotPresent` for operator/exporter images, and replaces example pod-IP
 comments with placeholders. A modification notice was added for this publication.
-The render script substitutes the selected installation namespace at runtime.
+When generating the deployment manifests, `scripts/render.sh` substitutes the
+selected namespace and adds the `docker.io/` registry prefix to Altinity image names.
 
 The pinned upstream root contained no NOTICE file when checked on 2026-11-17.
 This notice preserves attribution from its README and documents local changes;
