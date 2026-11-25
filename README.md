@@ -666,9 +666,4 @@ The optional rehearsal creates a local evidence directory; keep its generated lo
 
 ## Licensing
 
-The original scripts and documentation do not yet have an authorized open-source
-license. See [LICENSE](LICENSE); do not publish until the owner approves the license
-and confirms release authority. The vendored Altinity operator remains under its
-upstream Apache-2.0 license, preserved in
-[LICENSES/Altinity-clickhouse-operator-Apache-2.0.txt](LICENSES/Altinity-clickhouse-operator-Apache-2.0.txt).
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) identifies provenance and changes.
+[License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
