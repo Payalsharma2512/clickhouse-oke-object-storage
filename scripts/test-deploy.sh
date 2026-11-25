@@ -3,6 +3,19 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
+mkdir "$tmp/repo"
+cp -R scripts k8s "$tmp/repo/"
+if [[ -n ${ALTINITY_BUNDLE_FILE:-} && $ALTINITY_BUNDLE_FILE != /* ]]; then
+  export ALTINITY_BUNDLE_FILE="$PWD/$ALTINITY_BUNDLE_FILE"
+fi
+cd "$tmp/repo"
+if [[ -z ${ALTINITY_BUNDLE_FILE:-} ]]; then
+  # Exercise the real integrity check offline using a small release fixture.
+  export ALTINITY_BUNDLE_FILE="$tmp/upstream.yaml"
+  printf 'kind: Deployment\nmetadata:\n  namespace: kube-system\n' > "$ALTINITY_BUNDLE_FILE"
+  digest=$(sha256sum "$ALTINITY_BUNDLE_FILE")
+  sed -i "s/^  sha256=.*/  sha256=${digest%% *}/" scripts/render.sh
+fi
 export CALLS="$tmp/calls" NAMESPACE=clickhouse-offline
 cat > "$tmp/kubectl" <<'MOCK'
 #!/usr/bin/env bash
@@ -30,6 +43,14 @@ OBJECT_STORAGE_ACCESS_KEY=fake-offline-key
 OBJECT_STORAGE_SECRET_KEY=fake-offline-secret
 ENV
 export OBJECT_STORAGE_ENV_FILE="$tmp/secret.env" ALLOW_NEW_RESOURCES=yes
+printf 'corrupt manifest\n' > "$tmp/corrupt.yaml"
+touch "$CALLS"
+if ALTINITY_BUNDLE_FILE="$tmp/corrupt.yaml" OPERATOR_MODE=install bash scripts/deploy.sh apply > "$tmp/output" 2>&1; then
+  echo 'FAIL: accepted corrupt manifest'; exit 1
+fi
+grep -q 'failed SHA-256 verification' "$tmp/output"
+[[ ! -s "$CALLS" ]]
+echo 'PASS: corrupt manifest blocked before cluster access'
 for scenario in existing existing-crd missing-csi unbound reuse install; do
   : > "$CALLS"
   mode=reuse

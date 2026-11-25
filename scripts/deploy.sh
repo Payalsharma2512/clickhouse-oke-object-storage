@@ -6,8 +6,8 @@ export NAMESPACE=${NAMESPACE:-clickhouse-clean}
 MODE=${OPERATOR_MODE:-reuse}
 [[ "$MODE" == reuse || "$MODE" == install ]] || { echo 'OPERATOR_MODE must be reuse or install'; exit 2; }
 for tool in kubectl oci sed grep tr wc dirname mkdir sleep sort; do command -v "$tool" >/dev/null || { echo "Missing $tool"; exit 1; }; done
-out=$(bash scripts/render.sh)
 [[ "${1:-plan}" == plan || "${1:-plan}" == apply ]] || { echo 'Usage: deploy.sh [plan|apply]'; exit 2; }
+out=$(OPERATOR_MODE="$MODE" bash scripts/render.sh)
 echo "Target namespace: $NAMESPACE; operator mode: $MODE; manifests: $out"
 echo 'Creates 3 ClickHouse pods, 3 new 50 GiB OCI Block Volumes, and new Object Storage data.'
 echo 'No cleanup is performed. Existing namespaces are rejected.'

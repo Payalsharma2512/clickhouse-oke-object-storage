@@ -6,11 +6,11 @@ Copyright (c) 2019-2025, Altinity Inc and/or its affiliates. All rights reserved
 
 - Upstream: https://github.com/Altinity/clickhouse-operator/tree/0.26.3
 - Source: https://github.com/Altinity/clickhouse-operator/blob/0.26.3/deploy/operator/clickhouse-operator-install-bundle.yaml
-- Vendored file: `k8s/clickhouse-operator.yaml`.
+- Generated during installation: `build/<namespace>/clickhouse-operator.yaml`.
 - License: Apache License 2.0; the upstream license text is reproduced without
   alteration in `LICENSES/Altinity-clickhouse-operator-Apache-2.0.txt`.
 
-This is a modified bundle. Compared with the pinned upstream source, the existing
+The installer downloads and verifies the pinned upstream source. The generated
 demo bundle substitutes the namespace and associated RBAC names, omits the
 alternative namespaced Role/RoleBinding while retaining ClusterRole/Binding,
 uses `IfNotPresent` for operator/exporter images, and replaces example pod-IP

@@ -7,7 +7,7 @@ both. Kubernetes PVCs identify the block devices; ClickHouse system tables show
 where the active table parts reside.
 
 The demo uses three workers, three ClickHouse pods, three 50 GiB Block Volumes,
-and one shared Object Storage bucket. The Kubernetes operator manifest is adapted
+and one shared Object Storage bucket. In install mode, the demo generates its Kubernetes operator manifest
 from Altinity's ClickHouse Operator 0.26.3 installation bundle, distributed under
 Apache 2.0. [Altinity's source manifest](https://github.com/Altinity/clickhouse-operator/blob/0.26.3/deploy/operator/clickhouse-operator-install-bundle.yaml) · [Changes made for this demo](THIRD_PARTY_NOTICES.md)
 
@@ -251,7 +251,7 @@ bash scripts/deploy.sh plan
 ls "build/$NAMESPACE"
 ```
 
-`scripts/render.sh` renders namespace, operator, StorageClass, CHI and SQL ConfigMap
+`scripts/render.sh` renders namespace, StorageClass, CHI and SQL ConfigMap
 manifests from `k8s/`. It changes the namespace and associated resource names while
 preserving `clickhouse-demo-sql`, which validation expects. It does not render secrets.
 
@@ -261,8 +261,8 @@ The source CHI pins ClickHouse to the image digest observed on the working deplo
 image: docker.io/clickhouse/clickhouse-server@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
 ```
 
-In install mode, the script applies the bundled Altinity manifest. In reuse mode,
-it checks the operator already running in your cluster.
+In install mode, both plan and apply fetch the pinned Altinity 0.26.3 manifest from GitHub using `curl`, verify its SHA-256 with `sha256sum`, and adapt it with `awk`. For offline installs, set `ALTINITY_BUNDLE_FILE` to the original upstream YAML. The same checksum is required. In reuse mode,
+the installer uses the running operator and skips the download.
 
 Only after authorizing the new resources, run:
 
@@ -653,7 +653,7 @@ The optional rehearsal creates a local evidence directory; keep its generated lo
 
 ## Repository contents
 
-- `k8s/clickhouse-operator.yaml`: pinned Altinity operator 0.26.3 bundle.
+- `scripts/lib/render-operator.awk`: OKE-specific adjustments to the upstream operator manifest.
 - `k8s/clickhouse.yaml`: three-shard ClickHouseInstallation and hot/object policies.
 - `k8s/storageclasses.yaml`: OCI Block Volume CSI StorageClass.
 - `k8s/namespace.yaml`: namespace template.
