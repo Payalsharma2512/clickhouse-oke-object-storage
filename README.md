@@ -664,6 +664,4 @@ The optional rehearsal creates a local evidence directory; keep its generated lo
 - `scripts/`: deploy/render, loaders, read-only customer validation, shared SQL,
   offline regression tests and disabled automatic cleanup.
 
-## Licensing
-
-[License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
+[Third-party notices](THIRD_PARTY_NOTICES.md)
