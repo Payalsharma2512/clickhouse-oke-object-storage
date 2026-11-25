@@ -662,4 +662,6 @@ The optional rehearsal creates a local evidence directory; keep its generated lo
 - `scripts/`: deploy/render, loaders, read-only customer validation, shared SQL,
   offline regression tests and disabled automatic cleanup.
 
+Payal Sharma’s original scripts and documentation are available under the
+[MIT License](LICENSE). The Altinity operator is licensed under Apache 2.0.
 [Third-party notices](THIRD_PARTY_NOTICES.md)
