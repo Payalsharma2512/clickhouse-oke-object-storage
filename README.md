@@ -365,10 +365,10 @@ The manifest's default ClickHouse user has an empty password and broad network
 allowlisting. This is an isolated demo configuration; keep its service internal.
 Do not expose it as a public database endpoint.
 
-## 7. Load the sample data on a new installation only
+## 7. Load sample data
 
-These commands create/drop demo tables and insert data. **Do not run them on the
-preserved working deployment.** The read-only customer command is in the next section.
+Run this step only in a fresh or disposable demo namespace. The loader drops and
+recreates the demo tables, replacing any rows they contain.
 
 Choose **one** loading approach below. Do not run both approaches against the same
 tables. Each targets a new or explicitly disposable installation; neither is part
