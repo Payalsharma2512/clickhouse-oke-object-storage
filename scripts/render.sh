@@ -7,6 +7,6 @@ ns=${NAMESPACE:-clickhouse-clean}
 out="build/$ns"
 mkdir -p "$out"
 for file in namespace.yaml clickhouse.yaml test-workload.yaml storageclasses.yaml clickhouse-operator.yaml; do
-  sed "s/clickhouse-demo/$ns/g; s/$ns-sql/clickhouse-demo-sql/g" "k8s/$file" > "$out/$file"
+  sed "s/clickhouse-demo/$ns/g; s/$ns-sql/clickhouse-demo-sql/g; s|image: altinity/|image: docker.io/altinity/|g" "k8s/$file" > "$out/$file"
 done
 echo "$out"

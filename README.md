@@ -14,8 +14,7 @@ load balancer is needed.
 ## Validation results and scope
 
 The existing deployment passed a live rehearsal on November 17, 2026, followed by
-a read-only final summary. A separate fresh installation was deliberately not
-performed, to preserve the working demo and avoid provisioning additional resources.
+a read-only final summary. A separate live installation in `clickhouse-clean` on November 24, 2026 tested operator install mode on a disposable three-worker OKE cluster. All nine read-only checks passed from a local Bash client.
 
 | Check | Observed result | Evidence scope |
 |---|---|---|
@@ -25,11 +24,11 @@ performed, to preserve the working demo and avoid provisioning additional resour
 | Object-backed data | 10,000 rows per pod; 30,000 total | Successful inserts and subsequent reads |
 | Active part placement | `hot` and `oci_object_storage`, respectively | `system.parts` checks |
 | Payload reads | Successful for both table types on every pod | Nonempty-payload count queries |
-| Fresh-install scripts | Syntax, mocked success/failure paths, rendered manifest schema checks | Reviewed; not a fresh live deployment |
+| Fresh-install scripts | Install mode passed on a new OKE cluster | Three Ready instances, three bound 50 GiB volumes, ClickHouse 25.8.33.6 |
 | Customer demo script | All 9 summary checks passed against the existing deployment | Read-only run outside Cloud Shell |
 | OCI Cloud Shell execution | All nine read-only checks passed | Existing deployment |
 
-These results describe the existing deployment and are not a throughput benchmark.
+These results verify data access and storage placement.
 
 ## Architecture and storage semantics
 
@@ -207,7 +206,7 @@ oci ce cluster create-kubeconfig \
 # Use the active OCI session and kubeconfig.
 export DEMO_TARGET_FILE=/dev/null
 kubectl get nodes
-kubectl get csidriver blockvolume.csi.oraclecloud.com
+kubectl get csinodes -o 'custom-columns=NODE:.metadata.name,DRIVERS:.spec.drivers[*].name'
 ```
 
 `kubectl get nodes`, `kubectl config current-context` and
@@ -699,7 +698,7 @@ PASS: End-to-end read-only validation complete.
 
 Offline regression tests cover API failure, unhealthy nodes and pods, duplicate worker placement, incorrect PVCs, SQL errors, and incorrect counts or disk placement. Shell syntax and manifest checks support the procedure but do not execute a fresh installation or cleanup.
 
-All nine read-only checks also passed from OCI Cloud Shell against the existing deployment. A fresh installation remains unverified. If expected tables or rows are missing, the script
+All nine read-only checks also passed from OCI Cloud Shell against the existing deployment. The fresh installation passed the same nine checks from a local client. If expected tables or rows are missing, the script
 fails rather than silently loading data.
 
 ## Troubleshooting
@@ -735,7 +734,7 @@ why the walkthrough fixes the smaller workload instead of treating it as a stres
 **Do not run this against the working demo.** The repository's `cleanup.sh` is
 disabled. Both the CHI PVC policy and StorageClass use `Delete`: removing claims
 can delete their OCI Block Volumes and all local metadata. Review backups and the
-target resources before any cleanup. This procedure was not executed for this article.
+target resources before any cleanup. On the disposable install-mode test, the namespace and StorageClass were deleted, the three data volumes were released, and the dedicated Object Storage prefix was verified empty.
 
 For an independently created disposable namespace only, explicitly select its name
 and inspect the resources first. The guard refuses the protected namespace:
@@ -769,7 +768,7 @@ creation, operator readiness, storage provisioning, workload loading and final
 assertions. Syntax tests, mocked failure tests and Kubernetes client schema checks
 are useful, but cannot establish fresh-cluster IAM, networking, image pulls,
 scheduling or object access. The existing deployment demonstrates the storage model
-and data path. A fresh end-to-end installation remains a separate, unexecuted test.
+and data path. The corrected installation sequence passed live in operator install mode on a separate three-worker OKE cluster.
 
 ## Offline checks
 

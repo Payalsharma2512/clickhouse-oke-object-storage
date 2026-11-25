@@ -23,7 +23,9 @@ endpoint=$(sed -n 's/^OBJECT_STORAGE_ENDPOINT=//p' "$OBJECT_STORAGE_ENV_FILE" | 
 # API/auth errors are fatal; --ignore-not-found only tolerates genuine absence.
 existing=$(kubectl get namespace "$NAMESPACE" --ignore-not-found -o name)
 [[ -z "$existing" ]] || { echo 'Refusing to modify an existing namespace; choose a fresh namespace'; exit 1; }
-kubectl get csidriver blockvolume.csi.oraclecloud.com >/dev/null
+registered=$(kubectl get csinodes -o jsonpath='{range .items[*]}{.spec.drivers[*].name}{"\n"}{end}')
+ready_for_bv=$(printf '%s\n' "$registered" | tr -d '\r' | grep -Ec '(^| )blockvolume\.csi\.oraclecloud\.com( |$)' || true)
+[[ "$ready_for_bv" -ge 3 ]] || { echo 'Expected OCI Block Volume CSI registration on at least three workers'; exit 1; }
 sc=$(kubectl get storageclass "oci-bv-$NAMESPACE" --ignore-not-found -o name)
 [[ -z "$sc" ]] || { echo 'StorageClass already exists; refusing to modify it'; exit 1; }
 if [[ "$MODE" == reuse ]]; then

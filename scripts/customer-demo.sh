@@ -18,7 +18,7 @@ for cmd in kubectl jq mktemp rm uname; do command -v "$cmd" >/dev/null || fail "
 case "$(uname -s)" in MINGW*|MSYS*) jq() { command jq --binary "$@"; } ;; esac
 err=$(mktemp)
 trap 'rm -f "$err"' EXIT
-k() { MSYS2_ARG_CONV_EXCL='--raw=' kubectl --request-timeout=20s "$@" 2>"$err"; }
+k() { MSYS2_ARG_CONV_EXCL='--raw=' kubectl --request-timeout="${KUBECTL_REQUEST_TIMEOUT:-45s}" "$@" 2>"$err"; }
 pass() { states[$current]=PASS; printf 'PASS: %s\n' "${labels[$current]}"; }
 printf 'Read-only validation; no inserts, deployment changes or OCI resource operations.\n'
 if ! k get --raw=/version >/dev/null; then

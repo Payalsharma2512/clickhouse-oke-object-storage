@@ -9,6 +9,7 @@ cat > "$tmp/kubectl" <<'MOCK'
 echo "$*" >> "$CALLS"
 case "$*" in
   'get namespace'*) [[ "$SCENARIO" != existing ]] || echo namespace/clickhouse-offline ;;
+  'get csinodes'*) [[ "$SCENARIO" == missing-csi ]] || printf 'blockvolume.csi.oraclecloud.com\n%.0s' {1..3} ;;
   'get storageclass'*) ;;
   'get crd -o name') [[ "$SCENARIO" != existing-crd ]] || echo customresourcedefinition.apiextensions.k8s.io/clickhouseinstallations.clickhouse.altinity.com ;;
   'get pods'*nodeName*) printf 'node-0\nnode-1\nnode-2\n' ;;
@@ -29,7 +30,7 @@ OBJECT_STORAGE_ACCESS_KEY=fake-offline-key
 OBJECT_STORAGE_SECRET_KEY=fake-offline-secret
 ENV
 export OBJECT_STORAGE_ENV_FILE="$tmp/secret.env" ALLOW_NEW_RESOURCES=yes
-for scenario in existing existing-crd unbound reuse install; do
+for scenario in existing existing-crd missing-csi unbound reuse install; do
   : > "$CALLS"
   mode=reuse
   [[ "$scenario" != install && "$scenario" != existing-crd ]] || mode=install
