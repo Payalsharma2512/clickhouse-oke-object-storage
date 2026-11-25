@@ -28,67 +28,13 @@ a read-only final summary. A separate live installation in `clickhouse-clean` on
 | Customer demo script | All 9 summary checks passed against the existing deployment | Read-only run outside Cloud Shell |
 | OCI Cloud Shell execution | All nine read-only checks passed | Existing deployment |
 
-These results verify data access and storage placement.
+## Storage layout
 
-## Architecture and storage semantics
-
-```mermaid
-flowchart TB
-  OP[Altinity ClickHouse Operator] --> CHI[ClickHouseInstallation: oke-hot-object-demo]
-  CHI --> P1
-  CHI --> P2
-  CHI --> P3
-  subgraph W1[OKE worker A]
-    P1[ClickHouse pod: shard 1, replica 1] --> V1[hot-data PVC: 50 GiB OCI Block Volume]
-  end
-  subgraph W2[OKE worker B]
-    P2[ClickHouse pod: shard 2, replica 1] --> V2[hot-data PVC: 50 GiB OCI Block Volume]
-  end
-  subgraph W3[OKE worker C]
-    P3[ClickHouse pod: shard 3, replica 1] --> V3[hot-data PVC: 50 GiB OCI Block Volume]
-  end
-  P1 --> B[Shared OCI Object Storage bucket: dedicated demo prefix]
-  P2 --> B
-  P3 --> B
-```
-
-`k8s/clickhouse.yaml` defines cluster `demo` as:
-
-```yaml
-layout:
-  shardsCount: 3
-  replicasCount: 1
-```
-
+The [ClickHouse manifest](k8s/clickhouse.yaml) defines three shards with one replica each.
 Required pod anti-affinity spreads these pods across hostnames. Each mounts one
 `hot-data` PVC at `/var/lib/clickhouse/hot`. Server metadata is under
 `/var/lib/clickhouse/hot/server/`, and the named `hot` disk uses
 `/var/lib/clickhouse/hot/data/`.
-
-After installation and validation, verify worker health and pod placement using the anonymized view
-below. In this OKE environment, node names themselves are
-private IP addresses, so displaying `.spec.nodeName` directly is not safe. With
-kubectl already configured privately, this optional read-only view targets the existing validated deployment, `clickhouse-demo`. It is not an installation step. For a new installation, complete sections 1-7 first and substitute `clickhouse-clean` for that namespace:
-
-```bash
-nodes_json=$(kubectl --request-timeout=20s get nodes -o json 2>/dev/null) || { echo 'Check cluster access privately.'; exit 1; }
-pods_json=$(kubectl --request-timeout=20s get pods -n clickhouse-demo \
-  -l clickhouse.altinity.com/chi=oke-hot-object-demo -o json 2>/dev/null) || { echo 'Check pod access privately.'; exit 1; }
-jq -nr --argjson p "$pods_json" --argjson n "$nodes_json" '
-  ($p.items | map(.spec.nodeName) | unique) as $workers |
-  (["POD","WORKER","NODE_READY","POD_READY","PHASE"],
-   ($p.items | sort_by(.metadata.name)[] | . as $pod |
-    [$pod.metadata.name,
-     (["Worker A","Worker B","Worker C"][$workers | index($pod.spec.nodeName)] // "Unexpected worker"),
-     ([$n.items[] | select(.metadata.name==$pod.spec.nodeName) |
-       .status.conditions[] | select(.type=="Ready") | .status][0] // "Unknown"),
-     ([$pod.status.conditions[] | select(.type=="Ready") | .status][0] // "Unknown"),
-     $pod.status.phase])) | @tsv' | column -t -s $'\t'
-```
-
-The aliases derive from actual node assignments; repeated placement produces a
-repeated alias. Expect three distinct aliases, True readiness and Running pods.
-
 
 `demo.events` uses `hot_policy`. `demo.object_storage_events` uses
 `oci_object_storage_policy`. Both are ordinary local MergeTree tables. They are
@@ -124,10 +70,6 @@ Requirements:
   IAM permissions for provisioning and attaching volumes. Allow quota and attachment
   headroom for three 50 GiB volumes. Do not manually create the three data volumes:
   Kubernetes provisions them from PVCs.
-- The installer needs Kubernetes permissions for namespace, Secret, ConfigMap,
-  StorageClass and CHI creation. Full operator installation also needs CRD and
-  cluster RBAC permissions. Validation requires reading nodes, pods, PVCs and PVs,
-  plus `pods/exec` to run a client inside each pod. It does not need Secret reads.
 
 **Installation permissions:** namespace, Secret, ConfigMap, StorageClass and
 ClickHouseInstallation creation are required. `OPERATOR_MODE=install` additionally
@@ -212,7 +154,7 @@ kubectl get csinodes -o 'custom-columns=NODE:.metadata.name,DRIVERS:.spec.driver
 `kubectl get nodes`, `kubectl config current-context` and
 `kubectl get pods -o wide` are **private setup/diagnostic checks**, not publication
 screenshots. They may reveal private IPs, contexts or infrastructure identifiers.
-Use the anonymized placement view for published evidence.
+Use `scripts/customer-demo.sh` to show worker placement with anonymized aliases.
 
 Use `PUBLIC_ENDPOINT` only for a public API endpoint you can reach. For a private
 endpoint, establish the required Cloud Shell private-network access first and use
@@ -341,26 +283,6 @@ For full install mode, the script performs this sequence:
 5. Create the unique StorageClass, SQL ConfigMap and ClickHouseInstallation.
 6. Wait for exactly three ClickHouse pods, then their Ready conditions.
 7. Assert distinct worker placement and three Bound PVCs mapped to distinct PVs.
-
-These are the principal commands inside the script, shown for inspection rather
-than as a second set to execute after it:
-
-```bash
-kubectl create -f "build/$NAMESPACE/namespace.yaml"
-kubectl create secret generic clickhouse-oci-object-storage -n "$NAMESPACE" \
-  --from-env-file="$OBJECT_STORAGE_ENV_FILE"
-kubectl apply --server-side -f "build/$NAMESPACE/clickhouse-operator.yaml"
-kubectl wait --for=condition=Established \
-  crd/clickhouseinstallations.clickhouse.altinity.com --timeout=120s
-kubectl rollout status deployment/clickhouse-operator -n "$NAMESPACE" --timeout=180s
-kubectl create -f "build/$NAMESPACE/storageclasses.yaml"
-kubectl create -f "build/$NAMESPACE/test-workload.yaml"
-kubectl create -f "build/$NAMESPACE/clickhouse.yaml"
-```
-
-The script also handles asynchronous pod discovery before readiness checks. A
-partially failed installation is not automatically deleted: inspect its events and
-resolve the cause. A blind rerun is refused because the namespace already exists.
 
 ## 5. Understand PVC provisioning and Object Storage configuration
 
@@ -599,59 +521,15 @@ a cold-read or Object Storage latency benchmark.
 
 ## Customer Demo: End-to-End Validation from OCI Cloud Shell
 
-After completing the source-download and cluster-access steps below, use this read-only command for the already loaded existing deployment:
+From the repository root, use the kubeconfig configured in section 2 and select
+the namespace containing the loaded tables. For the existing deployment, run:
 
 ```bash
-export NAMESPACE=clickhouse-demo
-export DEMO_TARGET_FILE=/dev/null
-bash scripts/customer-demo.sh
+NAMESPACE=clickhouse-demo bash scripts/customer-demo.sh
 ```
 
-For a newly loaded installation, keep `NAMESPACE=clickhouse-clean` instead.
-The customer script does not use `DEMO_TARGET_FILE`, but retaining `/dev/null`
-keeps other repository scripts on the caller's configured target.
-
-It uses the active kubeconfig and defaults to namespace `clickhouse-demo`. It does
-not load private target settings, read Kubernetes Secrets, insert data, redeploy,
-or create/delete OCI resources. Its SQL helper, `scripts/lib/read-queries.sh`, is
-shared with the repository validation script. All database commands are SELECTs
-with ClickHouse read-only mode enabled.
-
-### Obtain the repository in Cloud Shell
-
-Use the clone or Download ZIP procedure in section 2. If you already obtained the
-source, return to that directory rather than cloning again. The following assumes
-the clone is at `$HOME/clickhouse-oke-object-storage`:
-
-```bash
-cd "$HOME/clickhouse-oke-object-storage"
-command -v bash kubectl oci jq mktemp rm uname
-```
-
-The customer script and `scripts/lib/read-queries.sh` are both included. No
-screenshots, private target files, or rehearsal logs are required. Run the full
-section 2 prerequisite check before performing an installation.
-
-### Configure access before sharing the screen
-
-Open **Access Cluster** for the intended OKE cluster. Use the console-provided
-Cloud Shell command or this equivalent with placeholders replaced privately:
-
-```bash
-export OCI_REGION='<region>'
-export CLUSTER_OCID='<cluster-ocid>'
-mkdir -p "$HOME/.kube"
-export KUBECONFIG="$HOME/.kube/clickhouse-demo"
-oci ce cluster create-kubeconfig --cluster-id "$CLUSTER_OCID" \
-  --file "$KUBECONFIG" --region "$OCI_REGION" --token-version 2.0.0 \
-  --kube-endpoint PUBLIC_ENDPOINT
-export NAMESPACE=clickhouse-demo
-bash scripts/customer-demo.sh
-```
-
-Use the existing Cloud Shell OCI identity/session and the kubeconfig just created. For a newly installed
-environment, set `NAMESPACE=clickhouse-clean` instead. Private API endpoints need
-configured private-network reachability as described in Oracle's access guide.
+For a new installation loaded in section 7, use `NAMESPACE=clickhouse-clean`.
+The script uses the active kubeconfig and runs read-only ClickHouse queries.
 
 ### What the one-command walkthrough verifies
 
@@ -760,15 +638,6 @@ After confirming the disposable prefix is no longer referenced, use the Object
 Storage console to review and delete **only that prefix's objects**. Preserve the
 shared bucket, other prefixes, existing OKE cluster and node pool. Verify the three
 disposable Block Volumes were removed before assuming billing has stopped.
-
-## Reproducibility boundary
-
-The source package contains a reviewed deployment sequence with namespace/Secret
-creation, operator readiness, storage provisioning, workload loading and final
-assertions. Syntax tests, mocked failure tests and Kubernetes client schema checks
-are useful, but cannot establish fresh-cluster IAM, networking, image pulls,
-scheduling or object access. The existing deployment demonstrates the storage model
-and data path. The corrected installation sequence passed live in operator install mode on a separate three-worker OKE cluster.
 
 ## Offline checks
 
