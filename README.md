@@ -154,7 +154,7 @@ kubectl get csinodes -o 'custom-columns=NODE:.metadata.name,DRIVERS:.spec.driver
 `kubectl get nodes`, `kubectl config current-context` and
 `kubectl get pods -o wide` are **private setup/diagnostic checks**, not publication
 screenshots. They may reveal private IPs, contexts or infrastructure identifiers.
-Use `scripts/customer-demo.sh` to show worker placement with anonymized aliases.
+Use `scripts/demo.sh` to show worker placement with anonymized aliases.
 
 Use `PUBLIC_ENDPOINT` only for a public API endpoint you can reach. For a private
 endpoint, establish the required Cloud Shell private-network access first and use
@@ -523,7 +523,7 @@ From the repository root, use the kubeconfig configured in section 2 and select
 the namespace containing the loaded tables. For the existing deployment, run:
 
 ```bash
-NAMESPACE=clickhouse-demo bash scripts/customer-demo.sh
+NAMESPACE=clickhouse-demo bash scripts/demo.sh
 ```
 
 For a new installation loaded in section 7, use `NAMESPACE=clickhouse-clean`.
@@ -645,7 +645,7 @@ These checks use mocked kubectl calls and do not contact OKE:
 for file in scripts/*.sh scripts/lib/*.sh; do bash -n "$file"; done
 bash scripts/test-validation.sh
 bash scripts/test-deploy.sh
-bash scripts/test-customer-demo.sh
+bash scripts/test-demo.sh
 ```
 
 The package uses the active kubeconfig and OCI session. No private target file is required.

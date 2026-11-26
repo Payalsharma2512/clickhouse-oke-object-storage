@@ -33,7 +33,7 @@ chmod +x "$tmp/kubectl"
 export PATH="$tmp:$PATH"
 for scenario in good unreachable bad-node same-node bad-pod unbound bad-size bad-driver query-error bad-layout bad-count bad-read bad-placement; do
   : > "$CALLS"
-  if SCENARIO="$scenario" bash scripts/customer-demo.sh > "$tmp/output" 2>&1; then
+  if SCENARIO="$scenario" bash scripts/demo.sh > "$tmp/output" 2>&1; then
     [[ "$scenario" == good ]] || { cat "$tmp/output"; echo "FAIL: accepted $scenario"; exit 1; }
     grep -q 'PASS: End-to-end read-only validation complete' "$tmp/output"
   else
